@@ -150,6 +150,20 @@ if "last_lang" not in st.session_state:
     st.session_state.last_lang = None
 if "elapsed" not in st.session_state:
     st.session_state.elapsed = None
+# Separate variable to hold text area content (avoids WidgetAlreadyInstantiatedError)
+if "text_input_val" not in st.session_state:
+    st.session_state.text_input_val = ""
+
+# ── Example button callback (runs BEFORE widgets render on next run) ──────────
+EXAMPLES = [
+    "Hello, how are you?",
+    "The future belongs to those who believe in their dreams.",
+    "Artificial intelligence is transforming the world.",
+]
+
+def use_example(text: str):
+    """on_click callback — sets text BEFORE text_area is rendered."""
+    st.session_state.text_input_val = text
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -203,6 +217,7 @@ with st.sidebar:
         st.session_state.translation_result = None
         st.session_state.last_lang = None
         st.session_state.elapsed = None
+        st.session_state.text_input_val = ""
         st.rerun()
 
 # ── Hero Header ───────────────────────────────────────────────────────────────
@@ -225,18 +240,27 @@ with col_input:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-label">✏️ Input Text</div>', unsafe_allow_html=True)
 
+    # text_area bound to session_state key 'text_input_val'
     input_text = st.text_area(
         "Source Text",
+        key="text_input_val",
         placeholder="Type or paste text to translate here...\n\nExample: Hello, how are you?",
         height=200,
-        key="input_text",
         label_visibility="collapsed",
     )
+
     char_count = len(input_text) if input_text else 0
 
     col_lang, col_btn = st.columns([1.4, 1])
     with col_lang:
-        target_language = st.selectbox("Target Language", options=LANGUAGES, index=0, key="lang_select")
+        # Default language = Hindi (index 5 in LANGUAGES list)
+        hindi_index = LANGUAGES.index("Hindi")
+        target_language = st.selectbox(
+            "Target Language",
+            options=LANGUAGES,
+            index=hindi_index,
+            key="lang_select",
+        )
     with col_btn:
         st.markdown("<br>", unsafe_allow_html=True)
         translate_clicked = st.button("🌐 Translate", key="translate_btn")
@@ -247,20 +271,18 @@ with col_input:
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Example phrases
+    # ── Example phrases (using on_click to avoid WidgetAlreadyInstantiatedError) ──
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div class="section-label">💡 Try an example</div>', unsafe_allow_html=True)
     ex_cols = st.columns(3)
-    examples = [
-        "Hello, how are you?",
-        "The future belongs to those who believe in beauty of their dreams.",
-        "Artificial intelligence is transforming the world.",
-    ]
-    for i, (ec, ex) in enumerate(zip(ex_cols, examples)):
+    for i, (ec, ex) in enumerate(zip(ex_cols, EXAMPLES)):
         with ec:
-            if st.button(f'"{ex[:18]}..."', key=f"ex_{i}"):
-                st.session_state["input_text"] = ex
-                st.rerun()
+            st.button(
+                f'"{ex[:18]}..."',
+                key=f"ex_{i}",
+                on_click=use_example,   # callback runs BEFORE render — no error!
+                args=(ex,),
+            )
 
 # ── RIGHT: Output ─────────────────────────────────────────────────────────────
 with col_output:
